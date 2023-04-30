@@ -75,8 +75,10 @@ class Player:
         for match_id in match_ids:
             print(match_id)
         #     # run the two functions to get the player data from the match ID
-        #     match_data = self.get_match_data("sea", match_id)
-        #     player_data = self.find_player_data(match_data)
+            match_data = self.get_match_data("sea", match_id)
+            print(match_data)
+            player_data = self.find_player_data(match_data)
+
         #
         #     # assign the variables we're interested in
         #     champion = player_data['championName']
@@ -102,7 +104,7 @@ with open("sample.json", "w") as outfile:
 
     player = Player(api_key, summoner_name, sever)
     match_ids = player.get_matches_id()
-    print(match_ids)
+
     #
     data = {
         'champion': [],
