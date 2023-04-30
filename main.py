@@ -3,7 +3,9 @@ import json
 import urllib.parse
 import pandas as pd
 
-
+api_key = "RGAPI-0013d416-08bd-4d73-b111-eba90aa7e75a"
+summoner_name = "Game này rác lắm"
+sever = "vn2"
 
 # Game%20n%C3%A0y%20r%C3%A1c%20l%E1%BA%AFm
 # api_url = f"https://vn2.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={api_key}"
@@ -30,7 +32,7 @@ class Player:
         api_url = (
             "https://" +
             region +
-            ".api.riotgames.com/lol/match/v5/matches/by-self.puuid/" +
+            ".api.riotgames.com/lol/match/v5/matches/by-puuid/" +
             self.puuid +
             "/ids?type=" +
             type +
@@ -71,7 +73,7 @@ class Player:
         }
 
         for match_id in match_ids:
-        #     print(match_id)
+            print(match_id)
         #     # run the two functions to get the player data from the match ID
         #     match_data = self.get_match_data("sea", match_id)
         #     player_data = self.find_player_data(match_data)
@@ -98,13 +100,9 @@ class Player:
 
 with open("sample.json", "w") as outfile:
 
-
-    api_key = "RGAPI-0013d416-08bd-4d73-b111-eba90aa7e75a"
-    summoner_name = "Game này rác lắm"
-    sever = "vn2"
-
     player = Player(api_key, summoner_name, sever)
     match_ids = player.get_matches_id()
+    print(match_ids)
     #
     data = {
         'champion': [],
@@ -114,60 +112,3 @@ with open("sample.json", "w") as outfile:
         'win': []
     }
     df = player.gather_all_data(match_ids)
-    # print(df)
-    # df['win'] = df['win'].astype(int)
-    # print(df)
-    #
-    # # Find the averages
-    # df.mean(numeric_only=True)  # numeric_only stops it trying to average the "champion" column
-    #
-    # # Get the averages per champion
-    # df.groupby('champion').mean()
-    #
-    # # or maybe order your games by amount of kills
-    # df.sort_values('kills')
-# -__________________________________________________________________________
-    # for match_id in matches:
-    #     # print(match_id)
-    #     # print(player.find_player_data(match_id))
-    #     match_data = player.get_match_data("sea", match_id)
-    #
-    #     player_data = player.find_player_data(match_data)
-    #
-    #     # assign the variables we're interested in
-    #     champion = player_data['championName']
-    #     k = player_data['kills']
-    #     d = player_data['deaths']
-    #     a = player_data['assists']
-    #     win = player_data['win']
-    #
-    #     # add them to our dataset
-    #     data['champion'].append(champion)
-    #     data['kills'].append(k)
-    #     data['deaths'].append(d)
-    #     data['assists'].append(a)
-    #     data['win'].append(win)
-    #     # part_index = player.get_match_data("sea", match)["metadata"]["participants"].index(player.self.puuid)
-    #     # # print(part_index)
-    #     # player_data = player.get_match_data("sea", match)["info"]["participants"][part_index]
-    #     #
-    #     # data = (
-    #     #     player_data["championName"] + " " +
-    #     #     str(player_data["kills"]) + " " +
-    #     #     str(player_data["deaths"]) + " " +
-    #     #     str(player_data["assists"]) + " " +
-    #     #     str(player_data["totalDamageDealtToChampions"]) + " " +
-    #     #     str(player_data["win"])
-    #     # )
-    #
-    #     # print(data)
-    # #
-    # # data = player.get_match_data("sea", matches[0])
-    # #
-    # # part_index = data["metadata"]["participants"].index(player.self.puuid)
-    # #
-    # #
-    #     # print(player_data["win"])
-    #     json.dump(data, outfile ,indent = 4)
-
-
