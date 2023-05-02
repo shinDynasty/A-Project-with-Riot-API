@@ -2,13 +2,15 @@ import requests
 import json
 import urllib.parse
 import pandas as pd
-
-api_key = "RGAPI-0013d416-08bd-4d73-b111-eba90aa7e75a"
+import time
 summoner_name = "Game này rác lắm"
 sever = "vn2"
 
-# Game%20n%C3%A0y%20r%C3%A1c%20l%E1%BA%AFm
-# api_url = f"https://vn2.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={api_key}"
+def getAPI_key():
+    return open("API.txt", "r").read()
+
+
+api_key = getAPI_key()
 
 
 class Player:
@@ -24,11 +26,23 @@ class Player:
                 self.__api_key
         )
         self.puuid = requests.get(api_url).json()["puuid"]
+        self.info = {
+            "teammate" : [],
+            "enemy" : [],
+            "lane" : {
+                "TOP" : [],
+                "JUNGLE": [],
+                "MIDDLE": [],
+                "BOTTOM": [],
+                "UTILITY": []
+
+            }
+        }
 
 
     # https://sea.api.riotgames.com/lol/match/v5/matches/by-self.puuid/wN1ZV_c8Gzw_iZYEyHyYAvshUreG_h5ZYuvPcF7T7401eov1u9X-kFLKX03DbvGFg92E8ZIYydh3fQ/ids?type=ranked&start=0&count=20&api_key=RGAPI-0013d416-08bd-4d73-b111-eba90aa7e75a
 
-    def get_matches_id(self, region="sea", type="ranked", start=0, count=20):
+    def get_matches_id(self, region="sea", type="ranked", start=0, count=1):
         api_url = (
             "https://" +
             region +
@@ -46,7 +60,7 @@ class Player:
         return requests.get(api_url).json()
 
 
-    def get_match_data(self, region, match_id):
+    def get_match_data(self, match_id, region="sea"):
         api_url = (
             "https://" +
             region +
@@ -55,7 +69,19 @@ class Player:
             "?api_key=" +
             self.__api_key
         )
-        return requests.get(api_url).json()
+        while True:
+            resp = requests.get(api_url)
+
+            # whenever we see a 429, we sleep for 10 seconds and then restart from the top of the "while" loop
+            if resp.status_code == 429:
+                print("Rate Limit hit, sleeping for 10 seconds")
+                time.sleep(10)
+                # continue means start the loop again
+                continue
+
+            # if resp.status_code isn't 429, then we carry on to the end of the function and return the data
+            match_data = resp.json()
+            return match_data
     def find_player_data(self, match_data):
         participants = match_data['metadata']['participants']
         player_index = participants.index(self.puuid)
@@ -64,20 +90,28 @@ class Player:
 
     def gather_all_data(self, match_ids):
         # We initialise an empty dictionary to store data for each game
-        data = {
-            'champion': [],
-            'kills': [],
-            'deaths': [],
-            'assists': [],
-            'win': []
-        }
-
+        # data = {
+        #     'champion': [],
+        #     'kills': [],
+        #     'deaths': [],
+        #     'assists': [],
+        #     'win': []
+        # }
         for match_id in match_ids:
-            print(match_id)
-        #     # run the two functions to get the player data from the match ID
-            match_data = self.get_match_data("sea", match_id)
-            print(match_data)
-            player_data = self.find_player_data(match_data)
+
+            participants = self.get_match_data(match_id)['metadata']['participants']
+            player_index = participants.index(self.puuid)
+
+            match_data = self.get_match_data(match_id)["info"]['participants']
+            for i in range(10):
+                print(i)
+                with open(f"player_{i}.json", "w") as outfile:
+                    data = match_data[i]
+
+                    json.dump(data, outfile, indent=4)
+
+
+
 
         #
         #     # assign the variables we're interested in
@@ -98,14 +132,15 @@ class Player:
         #
         # return df
 
+#
 
-
-with open("sample.json", "w") as outfile:
+with open("player.json", "w") as outfile:
 
     player = Player(api_key, summoner_name, sever)
     match_ids = player.get_matches_id()
-
     #
+
+
     data = {
         'champion': [],
         'kills': [],
@@ -113,4 +148,6 @@ with open("sample.json", "w") as outfile:
         'assists': [],
         'win': []
     }
+
     df = player.gather_all_data(match_ids)
+    # json.dump(match_player_data, outfile, indent=4)
