@@ -1,10 +1,11 @@
-import requests
 import json
 import urllib.parse
 import pandas as pd
 import time
+import requests
 summoner_name = "Game này rác lắm"
 sever = "vn2"
+
 
 def getAPI_key():
     return open("API.txt", "r").read()
@@ -12,6 +13,19 @@ def getAPI_key():
 
 api_key = getAPI_key()
 
+status = {
+    400: "Bad request",
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "Data not found",
+    405: "Method not allowed",
+    415: "Unsupported media type",
+    429: "Rate limit exceeded",
+    500: "Internal server error",
+    502: "Bad gateway",
+    503: "Service unavailable",
+    504: "Gateway timeout"
+}
 
 class Player:
     def __init__(self, api_key, summoner_name, sever):
@@ -25,7 +39,11 @@ class Player:
                 "?api_key=" +
                 self.__api_key
         )
-        self.puuid = requests.get(api_url).json()["puuid"]
+        resp = requests.get(api_url)
+        if resp.status_code == 200:
+            self.puuid = resp.json()["puuid"]
+        else:
+            self.puuid = status[resp.status_code]
         self.info = {
             "teammate" : [],
             "enemy" : [],
@@ -90,25 +108,89 @@ class Player:
 
     def gather_all_data(self, match_ids):
         # We initialise an empty dictionary to store data for each game
-        # data = {
-        #     'champion': [],
-        #     'kills': [],
-        #     'deaths': [],
-        #     'assists': [],
-        #     'win': []
-        # }
+        data = {
+            "info": {
+                "name": [],
+                "puuid": [],
+                'champion': [],
+                "lane": [],
+                "cs": [],
+                "csBefore10Mins": []
+            },
+            "baseStatus": {
+                'gameTime': [],
+                'kills': [],
+                'deaths': [],
+                'assists': [],
+                "kda": [],
+            },
+            "economics": {
+                "goldEarned": [],
+                "goldSpent": [],
+                "goldPerMinute": [],
+            },
+            "combat": {
+                "totalDamageDealtToChampions": [],
+                "damageTakenPerMinute": [],
+                "damageTakenPerGold": [],
+                "damagePerMinute": [],
+                "damagePerGold": [],
+            },
+            "items": [],
+
+            'win': []
+        }
         for match_id in match_ids:
 
             participants = self.get_match_data(match_id)['metadata']['participants']
             player_index = participants.index(self.puuid)
-
             match_data = self.get_match_data(match_id)["info"]['participants']
-            for i in range(10):
-                print(i)
-                with open(f"player_{i}.json", "w") as outfile:
-                    data = match_data[i]
+            with open(f"match_data.json", "w") as outfile:
 
+                json.dump(match_data, outfile, indent=4)
+
+
+            for i in range(10):
+                with open(f"player_{i}.json", "w") as outfile:
+                    # infor player
+                    data["info"]["name"] = match_data[i]["summonerName"]
+                    data["info"]["puuid"] = match_data[i]["puuid"]
+                    data["info"]["champion"] = match_data[i]["championName"]
+                    data["info"]["lane"] = match_data[i]["individualPosition"]
+                    data["info"]["cs"] = match_data[i]["totalMinionsKilled"] + match_data[i]["neutralMinionsKilled"]
+                    data["info"]["csBefore10Minutes"]
+
+
+                    # base status
+                    game_Length = match_data[i]["challenges"]["gameLength"]
+                    minutes = game_Length // 60
+                    seconds = game_Length % 60
+                    data["baseStatus"]["gameTime"] = (minutes + round(seconds/100, 2))
+                    data["baseStatus"]["kills"] = match_data[i]["kills"]
+                    data["baseStatus"]["deaths"] = match_data[i]["deaths"]
+                    data["baseStatus"]["assists"] = match_data[i]["assists"]
+                    data["baseStatus"]["kda"] = (data["baseStatus"]["kills"] + data["baseStatus"]["assists"]) / data["baseStatus"]["deaths"]
+                    data["baseStatus"]["kda"] = round(data["baseStatus"]["kda"], 2)
+                    #Economics
+                    data["economics"]["goldEarned"] = match_data[i]["goldEarned"]
+                    data["economics"]["goldSpent"] = match_data[i]["goldSpent"]
+                    data["economics"]["goldPerMinute"] = match_data[i]["challenges"]["goldPerMinute"]
+
+                    data["items"] = [match_data[i][f"item{k}"] for k in range(6)]
+
+                    #Combat
+                    data["combat"]["totalDamageDealtToChampions"] =  match_data[i]["totalDamageDealtToChampions"]
+                    data["combat"]["totalDamageTaken"] = match_data[i]["totalDamageTaken"]
+                    data["combat"]["damageTakenPerGold"] = data["combat"]["totalDamageTaken"] / data["economics"]["goldEarned"]
+                    data["combat"]["damageTakenPerMinute"] = data["combat"]["totalDamageTaken"] / data["baseStatus"]["gameTime"]
+
+                    data["combat"]["damagePerMinute"] = match_data[i]["challenges"]["damagePerMinute"]
+                    data["combat"]["damagePerGold"] = data["combat"]["damagePerMinute"] / data["economics"]["goldPerMinute"]
+
+
+                    data["win"] = match_data[i]["win"]
                     json.dump(data, outfile, indent=4)
+            print("done")
 
 
 
@@ -139,15 +221,5 @@ with open("player.json", "w") as outfile:
     player = Player(api_key, summoner_name, sever)
     match_ids = player.get_matches_id()
     #
-
-
-    data = {
-        'champion': [],
-        'kills': [],
-        'deaths': [],
-        'assists': [],
-        'win': []
-    }
-
     df = player.gather_all_data(match_ids)
     # json.dump(match_player_data, outfile, indent=4)
